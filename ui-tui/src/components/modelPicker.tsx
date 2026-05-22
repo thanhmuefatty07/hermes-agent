@@ -36,8 +36,14 @@ export function ModelPicker({ gw, onCancel, onSelect, sessionId, t }: ModelPicke
   // has an actual constraint to truncate against.
   const width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, (stdout?.columns ?? 80) - 6))
 
-  useEffect(() => {
-    gw.request<ModelOptionsResponse>('model.options', sessionId ? { session_id: sessionId } : {})
+  const refreshModels = (forceRefresh = false) => {
+    setLoading(true)
+    setErr('')
+
+    return gw.request<ModelOptionsResponse>('model.options', {
+      ...(sessionId ? { session_id: sessionId } : {}),
+      force_refresh: forceRefresh,
+    })
       .then(raw => {
         const r = asRpcResult<ModelOptionsResponse>(raw)
 
@@ -66,6 +72,10 @@ export function ModelPicker({ gw, onCancel, onSelect, sessionId, t }: ModelPicke
         setErr(rpcErrorMessage(e))
         setLoading(false)
       })
+  }
+
+  useEffect(() => {
+    void refreshModels(true)
   }, [gw, sessionId])
 
   const provider = providers[providerIdx]
@@ -198,6 +208,11 @@ export function ModelPicker({ gw, onCancel, onSelect, sessionId, t }: ModelPicke
         return
       }
 
+      return
+    }
+
+    if (stage !== 'key' && (ch === 'r' || ch === 'R') && key.ctrl === false && key.meta === false) {
+      void refreshModels(true)
       return
     }
 
@@ -427,7 +442,7 @@ export function ModelPicker({ gw, onCancel, onSelect, sessionId, t }: ModelPicke
         <Text color={t.color.muted} wrap="truncate-end">
           persist: {persistGlobal ? 'global' : 'session'} · g toggle
         </Text>
-        <OverlayHint t={t}>↑/↓ select · Enter choose · d disconnect · Esc/q cancel</OverlayHint>
+        <OverlayHint t={t}>↑/↓ select · Enter choose · r reload · d disconnect · Esc/q cancel</OverlayHint>
       </Box>
     )
   }
@@ -491,7 +506,7 @@ export function ModelPicker({ gw, onCancel, onSelect, sessionId, t }: ModelPicke
         persist: {persistGlobal ? 'global' : 'session'} · g toggle
       </Text>
       <OverlayHint t={t}>
-        {models.length ? '↑/↓ select · Enter switch · Esc back · q close' : 'Enter/Esc back · q close'}
+        {models.length ? '↑/↓ select · Enter switch · r reload · Esc back · q close' : 'Enter/Esc back · q close'}
       </OverlayHint>
     </Box>
   )
